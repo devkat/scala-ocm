@@ -46,7 +46,7 @@ class JcrRecordSpec extends Specification with AroundExample with Logging {
     }
     
     "Create an object" in {
-      val company = new Company().insertAt(root / "bec")
+      val company = create[Company](root / "bec")
       company.name = "BeCompany GmbH"
       company.save()
       dump(company.jcrNode.get)
@@ -54,14 +54,14 @@ class JcrRecordSpec extends Specification with AroundExample with Logging {
     }
     
     "Retrieve an object" in {
-      val company = Company.find(root / "bec").headOption.get
+      val company = getNode[Company](root / "bec").get
       company.name mustEqual "BeCompany GmbH"
     }
     
     "Delete objects" in {
-      Company.find(root / "bec") foreach { _.remove() }
+      getNodes[Company](root / "bec") foreach { _.remove() }
       jcrSession.save()
-      Company.find(root / "bec") mustEqual Seq.empty
+      getNodes[Company](root / "bec") mustEqual Seq.empty
     }
     
     "Create test data" in {
@@ -70,10 +70,10 @@ class JcrRecordSpec extends Specification with AroundExample with Logging {
     }
     
     "Manage references" in {
-      val r1 = Room.find(root / "rooms" / "room1").head
-      val r2 = Room.find(root / "rooms" / "room2").head
+      val r1 = getNodes[Room](root / "rooms" / "room1").head
+      val r2 = getNodes[Room](root / "rooms" / "room2").head
       val rooms = List(r1, r2)
-      val employee = Employee.find(root / "first" / "peter_example").head
+      val employee = getNodes[Employee](root / "first" / "peter_example").head
       employee.rooms mustEqual (rooms map (_.identifier))
     }
     

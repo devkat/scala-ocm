@@ -1,24 +1,25 @@
 package net.devkat.scalaocm
 
-import javax.jcr.Node
-import java.util.Calendar
-import javax.jcr.Binary
-import javax.jcr.Value
-import org.apache.commons.io.IOUtils
-import javax.jcr.PropertyType
 import java.io.ByteArrayInputStream
+import java.util.Calendar
 
-trait Mapper[T <: JcrNode[T]] {
-  self: JcrNode[T] =>
+import org.apache.commons.io.IOUtils
+
+import javax.jcr.PropertyType
+import javax.jcr.Value
+
+object ValueConversions {
 
   import Ocm._
   import Extensions._
 
-  def value2any(p: Value) = p.getType match {
+  lazy val factory = jcrSession.getValueFactory
+
+  def value2any(p: Value): Any = p.getType match {
     case PropertyType.BINARY => IOUtils.toByteArray(p.getBinary.getStream)
     case PropertyType.BOOLEAN => p.getBoolean
     case PropertyType.DATE => p.getDate
-    case PropertyType.DECIMAL => p.getDecimal
+    case PropertyType.DECIMAL => new BigDecimal(p.getDecimal)
     case PropertyType.DOUBLE => p.getDouble
     case PropertyType.LONG => p.getLong
     case PropertyType.NAME => p.getString
@@ -31,27 +32,9 @@ trait Mapper[T <: JcrNode[T]] {
     case t => throw new RuntimeException("Unknown property type " + PropertyType.nameFromValue(t))
   }
 
-  implicit def scalaBigDecimal2javaBigDecimal(i: BigDecimal): java.math.BigDecimal =
-    new java.math.BigDecimal(i.toDouble)
-
-  implicit def byteArray2binary(a: Array[Byte]): Binary =
-    jcrSession.getValueFactory().createBinary(new ByteArrayInputStream(a))
-
-  def setProperty(name: String, v: Any) = withNode { n =>
-    v match {
-      case null => n.setProperty(name, null.asInstanceOf[String])
-      case l: List[_] => n.setProperty(name, toJcrValues(l))
-      case v => n.setProperty(name, toJcrValue(v))
-    }
-  }
-
-  lazy val factory = jcrSession.getValueFactory
-
-  def toJcrValues[T <: Any](l: List[T]): Array[Value] = l map toJcrValue _ toArray
-
-  def toJcrValue(v: Any): Value = v match {
-    case a: Array[Byte] => factory.createValue(a)
-    case i: BigDecimal => factory.createValue(i)
+  def any2value(v: Any): Value = v match {
+    case a: Array[Byte] => factory.createValue(factory.createBinary(new ByteArrayInputStream(a)))
+    case i: BigDecimal => factory.createValue(new java.math.BigDecimal(i.toDouble))
     case b: Boolean => factory.createValue(b)
     case c: Calendar => factory.createValue(c)
     case d: Double => factory.createValue(d)
@@ -60,5 +43,7 @@ trait Mapper[T <: JcrNode[T]] {
     case s: String => factory.createValue(s, PropertyType.STRING)
     case v => throw new RuntimeException("Unsupported property value " + v)
   }
+
+  def list2values[T <: Any](l: List[T]): Array[Value] = l map any2value _ toArray
 
 }

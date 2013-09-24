@@ -1,6 +1,6 @@
 package net.devkat.scalaocm
 
-import Ocm.jcrSession
+import Ocm._
 import Path.root
 import java.util.Calendar
 import net.devkat.scalaocm.annotations.JcrProperty
@@ -46,7 +46,7 @@ class Employee extends JcrNode[Employee] {
   @JcrProperty var roles:List[String] = _
   @JcrProperty var rooms:List[String] = _
 
-  lazy val company = Company.parentOf(this)
+  lazy val company = parentOf[Company](this)
 
 }
 
@@ -89,29 +89,29 @@ object CompanySchema extends Schema(
   }
   
   def cleanup {
-    Company.find(root / "first") foreach { _.remove() }
-    Company.find(root / "second") foreach { _.remove() }
-    Company.find(root / "third") foreach { _.remove() }
-    Room.find(root / "rooms") foreach { _.remove() }
+    getNodes[Company](root / "first") foreach { _.remove() }
+    getNodes[Company](root / "second") foreach { _.remove() }
+    getNodes[Company](root / "third") foreach { _.remove() }
+    getNodes[Room](root / "rooms") foreach { _.remove() }
   }
 
   object TestData {
 
-    val c1 = new Company().insertAt(root / "first")
+    val c1 = create[Company](root / "first")
     c1.name = "First Company USA"
     c1.created = Calendar.getInstance()
 
-    val c2 = new Company().insertAt(root / "second")
+    val c2 = create[Company](root / "second")
     c2.name = "Second Company USA"
     c2.created = Calendar.getInstance()
 
-    val c3 = new Company().insertAt(root / "third")
+    val c3 = create[Company](root / "third")
     c3.name = "Company or Employee"
     c3.created = Calendar.getInstance()
 
     val allCompanies = List(c1, c2, c3)
 
-    lazy val e1 = new Employee().insertAt(c1.jcrPath / "peter_example")
+    lazy val e1 = create[Employee](c1.jcrPath / "peter_example")
     e1.name = "Peter Example"
     e1.email = "peter@example.com"
     e1.salary = BigDecimal(345)
@@ -125,12 +125,12 @@ object CompanySchema extends Schema(
 
     lazy val allEmployees = List(e1)
 
-    val rooms = new Folder().insertAt(root / "rooms")
-    val r1 = new Room().insertAt(rooms.jcrPath / "room1")
+    val rooms = create[Folder](root / "rooms")
+    val r1 = create[Room](rooms.jcrPath / "room1")
     r1.name = "Room 1"
-    val r2 = new Room().insertAt(rooms.jcrPath / "room2")
+    val r2 = create[Room](rooms.jcrPath / "room2")
     r2.name = "Room 2"
-    val r3 = new Room().insertAt(rooms.jcrPath / "room3")
+    val r3 = create[Room](rooms.jcrPath / "room3")
     r3.name = "Room 3"
 
     lazy val allRooms = List(r1, r2, r3)
