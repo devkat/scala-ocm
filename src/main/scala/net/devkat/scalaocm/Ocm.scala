@@ -8,15 +8,18 @@ import javax.jcr.Node
 import scala.reflect.runtime.universe
 import scala.reflect.runtime.universe._
 import net.devkat.scalaocm.annotation.JcrProperty
+import net.devkat.scalaocm.mapper.Mapper
 
 trait Ocm extends Logging {
+  
+  self: Mapper =>
 
   import Extensions._
   import Reflection._
   import ValueConversions._
 
   val currentSession = new DynamicVariable[Session](null)
-  val nodes = new DynamicVariable[scala.collection.mutable.Map[AnyRef, Node]](null)
+  val node2obj = new DynamicVariable[scala.collection.mutable.Map[Node, AnyRef]](null)
 
   implicit def jcrSession = currentSession.value match {
     case null => throw new RuntimeException("Not logged in to repository.")
@@ -29,7 +32,7 @@ trait Ocm extends Logging {
   def transaction[T](repo: Repository)(f: => T): T = {
     val session = repo.login(new SimpleCredentials("admin", "admin".toCharArray))
     currentSession.withValue(session) {
-      nodes.withValue(scala.collection.mutable.Map.empty[AnyRef, Node]) {
+      node2obj.withValue(scala.collection.mutable.Map.empty[Node, AnyRef]) {
         if (!namespaceRegistry.getURIs.contains(scalaOcmNamespace.uri))
           namespaceRegistry.registerNamespace(scalaOcmNamespace.prefix, scalaOcmNamespace.uri)
 
@@ -59,9 +62,11 @@ trait Ocm extends Logging {
   }
 
   protected def fromNode[T <: AnyRef](n: Node)(implicit m: Manifest[T]): T = {
-    val r = newInstance[T]
-    load(r, n)
-    r
+    node2obj.value.getOrElseUpdate(n, {
+      val r = newInstance[T]
+      load(r, n)
+      r
+    }).asInstanceOf[T]
   }
 
   def lookup[T <: AnyRef](path: Path)(implicit m: Manifest[T]): Seq[T] =
@@ -81,7 +86,7 @@ trait Ocm extends Logging {
     val r = newInstance[T]
     val node = jcrSession.getRootNode.addNode(path.names mkString "/")
     node.setProperty(scalaOcmNamespace.prefixed(classNameProperty), getClass.getName)
-    nodes.value.put(r, node)
+    node2obj.value.put(node, r)
     r
   }
 
@@ -113,7 +118,6 @@ trait Ocm extends Logging {
   }
 
   def load(r:AnyRef, node: Node) = {
-    nodes.value.put(r, node)
     val mirror = instanceMirror(r)
     getJcrFields(mirror.symbol) foreach { field =>
       val name = fieldName(field)
@@ -124,11 +128,9 @@ trait Ocm extends Logging {
     }
   }
 
-  def setField(field: FieldMirror, value: Any): Unit
-
   def fieldName(field: TermSymbol) = field.name.decoded.trim
 
-  def save(r: AnyRef) {
+  def update(r: AnyRef) {
     withNode(r) { n =>
 
       def setProperty(name: String, v: Any) {
@@ -150,7 +152,8 @@ trait Ocm extends Logging {
   
   def getField(field:FieldMirror): Any
   
-  protected[scalaocm] def node(r: AnyRef) = nodes.value.get(r)
+  protected[scalaocm] def node(r: AnyRef): Option[Node] =
+    node2obj.value.find { case ((node, obj)) => obj == r } map (_._1)
 
   protected[scalaocm] def withNode[T <: AnyRef, U](r: T)(f: Node => U): U = node(r) match {
     case Some(node) => f(node)
@@ -159,6 +162,10 @@ trait Ocm extends Logging {
 
   def remove(r: AnyRef) {
     withNode(r) { _.remove() }
+  }
+  
+  def referencingFields(r: AnyRef): Iterator[(AnyRef, String)] = withNode(r) { node =>
+    node.getReferences map { property => (fromNode(property.getParent), property.getName) }
   }
   
 }

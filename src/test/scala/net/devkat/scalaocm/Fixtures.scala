@@ -82,7 +82,7 @@ object CompanySchema {
     */
     
     e1.rooms = List(r1, r2) map identifier _
-    save(e1)
+    update(e1)
   }
   
   def cleanup {
@@ -97,14 +97,17 @@ object CompanySchema {
     val c1 = create[Company](root / "first")
     c1.name = "First Company USA"
     c1.created = Calendar.getInstance()
+    update(c1)
 
     val c2 = create[Company](root / "second")
     c2.name = "Second Company USA"
     c2.created = Calendar.getInstance()
+    update(c2)
 
     val c3 = create[Company](root / "third")
     c3.name = "Company or Employee"
     c3.created = Calendar.getInstance()
+    update(c3)
 
     val allCompanies = List(c1, c2, c3)
 
@@ -119,16 +122,23 @@ object CompanySchema {
     e1.departmentNumber = 2
     //e1.role(EmployeeRole.Programmer).
     e1.photo = Array[Byte](0, 1, 2, 3, 4)
+    update(e1)
 
     lazy val allEmployees = List(e1)
 
     val rooms = create[Folder](root / "rooms")
+    
     val r1 = create[Room](rooms / "room1")
     r1.name = "Room 1"
+    update(r1)
+    
     val r2 = create[Room](rooms / "room2")
     r2.name = "Room 2"
+    update(r2)
+      
     val r3 = create[Room](rooms / "room3")
     r3.name = "Room 3"
+    update(r3)
 
     lazy val allRooms = List(r1, r2, r3)
     

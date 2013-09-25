@@ -48,7 +48,7 @@ class JcrRecordSpec extends Specification with AroundExample with Logging {
     "Create an object" in {
       val company = create[Company](root / "bec")
       company.name = "BeCompany GmbH"
-      save(company)
+      update(company)
       dump(node(company).get)
       company.name mustEqual "BeCompany GmbH"
     }
