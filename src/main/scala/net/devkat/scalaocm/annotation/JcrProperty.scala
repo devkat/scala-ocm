@@ -1,4 +1,4 @@
-package net.devkat.scalaocm.annotations
+package net.devkat.scalaocm.annotation
 
 import scala.annotation.StaticAnnotation
 

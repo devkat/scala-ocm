@@ -2,18 +2,14 @@ package net.devkat.scalaocm
 
 import java.io.ByteArrayInputStream
 import java.util.Calendar
-
 import org.apache.commons.io.IOUtils
-
 import javax.jcr.PropertyType
 import javax.jcr.Value
+import javax.jcr.Session
 
 object ValueConversions {
 
-  import Ocm._
   import Extensions._
-
-  lazy val factory = jcrSession.getValueFactory
 
   def value2any(p: Value): Any = p.getType match {
     case PropertyType.BINARY => IOUtils.toByteArray(p.getBinary.getStream)
@@ -32,18 +28,22 @@ object ValueConversions {
     case t => throw new RuntimeException("Unknown property type " + PropertyType.nameFromValue(t))
   }
 
-  def any2value(v: Any): Value = v match {
-    case a: Array[Byte] => factory.createValue(factory.createBinary(new ByteArrayInputStream(a)))
-    case i: BigDecimal => factory.createValue(new java.math.BigDecimal(i.toDouble))
-    case b: Boolean => factory.createValue(b)
-    case c: Calendar => factory.createValue(c)
-    case d: Double => factory.createValue(d)
-    case i: Int => factory.createValue(i)
-    case l: Long => factory.createValue(l)
-    case s: String => factory.createValue(s, PropertyType.STRING)
-    case v => throw new RuntimeException("Unsupported property value " + v)
+  def any2value(v: Any)(implicit jcrSession: Session): Value = {
+    val factory = jcrSession.getValueFactory
+    v match {
+      case a: Array[Byte] => factory.createValue(factory.createBinary(new ByteArrayInputStream(a)))
+      case i: BigDecimal => factory.createValue(new java.math.BigDecimal(i.toDouble))
+      case b: Boolean => factory.createValue(b)
+      case c: Calendar => factory.createValue(c)
+      case d: Double => factory.createValue(d)
+      case i: Int => factory.createValue(i)
+      case l: Long => factory.createValue(l)
+      case s: String => factory.createValue(s, PropertyType.STRING)
+      case v => throw new RuntimeException("Unsupported property value " + v)
+    }
   }
 
-  def list2values[T <: Any](l: List[T]): Array[Value] = l map any2value _ toArray
+  def list2values[T <: Any](l: List[T])(implicit jcrSession: Session): Array[Value] =
+    l map any2value _ toArray
 
 }

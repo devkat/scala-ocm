@@ -14,8 +14,6 @@ import scala.math.BigDecimal.long2bigDecimal
 
 object Extensions {
   
-  import Ocm._
-  
   implicit def extendNode(node: Node) = new NodeExtender(node)
   
   implicit def toIterator(it:NodeIterator) = new Iterator[Node] {
@@ -27,7 +25,7 @@ object Extensions {
     def hasNext = it.hasNext
     def next = it.nextProperty
   }
-  
+  /*
   def factory = jcrSession.getValueFactory
   
   implicit def propertyToString(p:Property): String = p.getString
@@ -49,7 +47,7 @@ object Extensions {
 
   implicit def propertyToBinary(p:Property): Array[Byte] = IOUtils.toByteArray(p.getBinary.getStream)
   implicit def propertyToBinaryOption(p:Property): Option[Array[Byte]] = ?(IOUtils.toByteArray(p.getBinary.getStream))
-
+*/
   class NodeExtender(node: Node) {
 
     def childNodes = new Iterator[Node] {

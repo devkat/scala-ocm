@@ -5,7 +5,6 @@ import org.specs2.mutable.Specification
 import org.specs2.execute.Result
 import org.specs2.execute.AsResult
 import org.apache.jackrabbit.core.TransientRepository
-import Ocm._
 import Path._
 import Extensions.toIterator
 import com.typesafe.scalalogging.slf4j.Logging
@@ -14,18 +13,19 @@ class JcrRecordSpec extends Specification with AroundExample with Logging {
   
   import Extensions._
   import JcrHelpers._
+  import DirectTypeOcm._
 
   "JCR Record Specification".title
   sequential
 
   protected def around[T: AsResult](t: => T): Result = {
-    withRepo(new TransientRepository) {
+    transaction(new TransientRepository) {
       AsResult(t)
     }
   }
 
   "JCR Record" should {
-    "Create new nodes" in {
+    "Create new nodes using plain JCR" in {
       val root = jcrSession.getRootNode
       
       // Store content 
@@ -48,20 +48,20 @@ class JcrRecordSpec extends Specification with AroundExample with Logging {
     "Create an object" in {
       val company = create[Company](root / "bec")
       company.name = "BeCompany GmbH"
-      company.save()
-      dump(company.jcrNode.get)
+      save(company)
+      dump(node(company).get)
       company.name mustEqual "BeCompany GmbH"
     }
     
     "Retrieve an object" in {
-      val company = getNode[Company](root / "bec").get
+      val company = lookup[Company](root / "bec").head
       company.name mustEqual "BeCompany GmbH"
     }
     
     "Delete objects" in {
-      getNodes[Company](root / "bec") foreach { _.remove() }
+      lookup[Company](root / "bec") foreach remove _
       jcrSession.save()
-      getNodes[Company](root / "bec") mustEqual Seq.empty
+      lookup[Company](root / "bec") mustEqual Seq.empty
     }
     
     "Create test data" in {
@@ -70,11 +70,11 @@ class JcrRecordSpec extends Specification with AroundExample with Logging {
     }
     
     "Manage references" in {
-      val r1 = getNodes[Room](root / "rooms" / "room1").head
-      val r2 = getNodes[Room](root / "rooms" / "room2").head
+      val r1 = lookup[Room](root / "rooms" / "room1").head
+      val r2 = lookup[Room](root / "rooms" / "room2").head
       val rooms = List(r1, r2)
-      val employee = getNodes[Employee](root / "first" / "peter_example").head
-      employee.rooms mustEqual (rooms map (_.identifier))
+      val employee = lookup[Employee](root / "first" / "peter_example").head
+      employee.rooms mustEqual (rooms map { n => identifier(n) })
     }
     
     "Clean up" in {
