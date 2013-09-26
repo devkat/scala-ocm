@@ -17,6 +17,8 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-simple" % "1.7.5"
 )
 
+parallelExecution in Test := false
+
 testOptions in Test += Tests.Setup(() => {
     System.setProperty("org.apache.jackrabbit.repository.conf", "classpath:repository.xml")
     System.setProperty("org.apache.jackrabbit.repository.home", "target/repository")

@@ -14,4 +14,7 @@ object Reflection {
     ctorMirror().asInstanceOf[T]
   }
 
+  def instanceMirror(r: AnyRef) =
+    universe.runtimeMirror(getClass.getClassLoader).reflect(r)
+
 }
