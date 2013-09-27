@@ -14,4 +14,13 @@ import net.devkat.scalaocm.node.Folder
     @JcrProperty var doubleProp: Double = _
     @JcrProperty var longProp: Long = _
     @JcrProperty var stringProp: String = _
+    
+    @JcrProperty var byteArrayOptionProp: Option[Array[Byte]] = _
+    @JcrProperty var bigDecimalOptionProp: Option[BigDecimal] = _
+    @JcrProperty var booleanOptionProp: Option[Boolean] = _
+    @JcrProperty var calendarOptionProp: Option[Calendar] = _
+    @JcrProperty var doubleOptionProp: Option[Double] = _
+    @JcrProperty var longOptionProp: Option[Long] = _
+    @JcrProperty var stringOptionProp: Option[String] = _
+
   }
