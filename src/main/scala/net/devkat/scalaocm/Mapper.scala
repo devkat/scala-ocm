@@ -7,6 +7,11 @@ import scala.reflect.runtime.universe
 import scala.reflect.runtime.universe._
 import net.devkat.scalaocm.annotation.JcrProperty
 
+case class FieldMetaData(
+  term: TermSymbol,
+  valueType: Type
+)
+
 trait Mapper extends Logging {
   
   self: SessionHolder =>
@@ -14,9 +19,11 @@ trait Mapper extends Logging {
   import Reflection._
   import ValueConversions._
     
-  def setField(field: FieldMirror, value: Any): Unit
+  def setFieldValue(field: FieldMirror, value: Any): Unit
 
-  def getField(field:FieldMirror): Any
+  def getFieldValue(field: FieldMirror): Any
+  
+  def getFieldType(field: TermSymbol): Type
   
   protected def jcrPath(node: Node) = Path.parse(node.getPath)
 
@@ -29,13 +36,18 @@ trait Mapper extends Logging {
   }
 
   protected def load(r:AnyRef, node: Node) = {
+    println("Loading node")
+    JcrHelpers.dump(node)
     val mirror = instanceMirror(r)
-    getJcrFields(mirror.symbol) foreach { field =>
-      val name = fieldName(field)
-      val value = getPropertyValue(node, name)
+    getMappedFields(mirror.symbol) foreach { field =>
+      val name = fieldName(field.term)
+      val value = getPropertyValue(node, name, getFieldType(field.term))
       logger.info("Loading property {}.{} := {}", node.getPath, name, value)
       //instanceMirror.reflectField(field).set(value.orNull)
-      value foreach { v => setField(mirror.reflectField(field), v) }
+      value match {
+        case Left(error) => throw new RuntimeException(error)
+        case Right(v) => setFieldValue(mirror.reflectField(field.term), v.value)
+      }
     }
   }
   
@@ -46,37 +58,53 @@ trait Mapper extends Logging {
         v match {
           case null => n.setProperty(name, null.asInstanceOf[String])
           case l: List[_] => n.setProperty(name, list2values(l))
-          case v => n.setProperty(name, any2value(v))
+          case v => any2valueOption(v) match {
+            case Some(value) => n.setProperty(name, value)
+            case None => if (n.hasProperty(name)) n.getProperty(name).remove()
+          }
         }
-        logger.info("Save property {}.{} = {}", jcrPath(n), name, getPropertyValue(n, name))
       }
 
       val mirror = instanceMirror(r)
-      getJcrFields(mirror.symbol) foreach { field =>
-        val v = getField(mirror.reflectField(field))
-        setProperty(fieldName(field), v)
+      getMappedFields(mirror.symbol) foreach { field =>
+        val v = getFieldValue(mirror.reflectField(field.term))
+        val name = fieldName(field.term)
+        setProperty(name, v)
+        logger.info("Save property {}.{} = {}", jcrPath(n), name, getPropertyValue(n, name, getFieldType(field.term)))
       }
     }
   }
 
-  protected def getJcrFields(symbol: ClassSymbol): Iterable[TermSymbol] =
+  protected def getMappedFields(symbol: ClassSymbol): Iterable[FieldMetaData] =
     symbol.toType.members.collect {
       case t: TermSymbol if (t.isVal || t.isVar) &&
-        t.annotations.find(_.tpe == universe.typeOf[JcrProperty]).isDefined => t
+        t.annotations.find(_.tpe == typeOf[JcrProperty]).isDefined => FieldMetaData(t, getFieldType(t))
     }
 
-  protected def getPropertyValue(node:Node, name: String): Option[Any] = {
+  protected def getPropertyValue(node:Node, name: String, t: Type): Either[String, PropertyValue[_]] = {
+    
+    val isSimple = t <:< typeOf[SimpleValue[_]]
+    val isMulti = t <:< typeOf[MultiValue[_]]
+    val isOption = t <:< typeOf[OptionValue[_]]
+    
     if (node.hasProperty(name)) {
       val prop = node.getProperty(name)
-      val v = if (prop.isMultiple) {
-        prop.getValues.toList map value2any _
-      } else {
-        value2any(prop.getValue)
+      if (prop.isMultiple) {
+        if (isMulti) Right(MultiValue(prop.getValues.toList map getValue _))
+        else Left("Non multi-value field '%s' can't be set from multi-value property.".format(name))
       }
-      Some(v)
-    } else None
+      else {
+        if (isSimple) Right(getValue(prop.getValue))
+        else if (isOption) Right(OptionValue(Some(getValue(prop.getValue))))
+        else if (isMulti) Left("Multi-value field '%s' can't be set from single-value property.".format(name))
+        else Left("Unsupported type %s".format(t))
+      }
+    }
+    else {
+      if (isOption) Right(OptionValue(None))
+      else if (isMulti) Right(MultiValue(List.empty[SimpleValue[_]]))
+      else Left("Simple-value field '%s' can't be set from null-value property.".format(name))
+    }
   }
-
-  protected def fieldName(field: TermSymbol) = field.name.decoded.trim
 
 }
