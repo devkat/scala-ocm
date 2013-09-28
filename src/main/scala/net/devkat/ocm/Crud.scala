@@ -1,9 +1,9 @@
-package net.devkat.scalaocm
+package net.devkat.ocm
 
 import scala.reflect.runtime.universe
 import scala.reflect.runtime.universe._
 import javax.jcr.Node
-import net.devkat.scalaocm.annotation.JcrProperty
+import net.devkat.ocm.annotation.JcrProperty
 
 trait Crud {
   
@@ -15,12 +15,19 @@ trait Crud {
 
   implicit def path(r: AnyRef) = withNode(r) { jcrPath _ }
 
-  def create[T <: AnyRef](path: Path)(implicit m: Manifest[T]): T = {
+  def create_[T <: AnyRef](path: Path)(implicit m: Manifest[T]): T = {
     val r = newInstance[T]
     val node = jcrSession.getRootNode.addNode(path.names mkString "/")
     node.setProperty(scalaOcmNamespace.prefixed(classNameProperty), getClass.getName)
     node2obj.value.put(node, r)
     r
+  }
+  
+  def insert(r: AnyRef, path: Path) {
+    val node = jcrSession.getRootNode.addNode(path.names mkString "/")
+    node.setProperty(scalaOcmNamespace.prefixed(classNameProperty), getClass.getName)
+    node2obj.value.put(node, r)
+    save(r)
   }
 
   def update(r: AnyRef) {

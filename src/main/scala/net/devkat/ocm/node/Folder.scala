@@ -1,4 +1,4 @@
-package net.devkat.scalaocm.node
+package net.devkat.ocm.node
 
 class Folder extends HierarchyNode {
   

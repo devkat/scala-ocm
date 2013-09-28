@@ -1,4 +1,4 @@
-package net.devkat.scalaocm
+package net.devkat.ocm
 
 import java.io.ByteArrayInputStream
 import java.util.Calendar
@@ -29,7 +29,7 @@ object ValueConversions {
     case PropertyType.UNDEFINED => typeOf[UndefinedValue]
     case PropertyType.URI => typeOf[UriValue]
     case PropertyType.WEAKREFERENCE => typeOf[WeakReferenceValue]
-    case t => throw new RuntimeException("Unknown property type " + PropertyType.nameFromValue(t))
+    case t => throw new OcmException("Unknown property type " + PropertyType.nameFromValue(t))
   }
   
   def getValue(p: Value): SimpleValue[_] = p.getType match {
@@ -46,7 +46,7 @@ object ValueConversions {
     case PropertyType.UNDEFINED => UndefinedValue()
     case PropertyType.URI => UriValue(p.getString)
     case PropertyType.WEAKREFERENCE => WeakReferenceValue(p.getString)
-    case t => throw new RuntimeException("Unknown property type " + PropertyType.nameFromValue(t))
+    case t => throw new OcmException("Unknown property type " + PropertyType.nameFromValue(t))
   }
 
   def any2valueOption(v: Any)(implicit jcrSession: Session): Option[Value] = {
@@ -67,7 +67,7 @@ object ValueConversions {
       case i: Int => factory.createValue(i)
       case l: Long => factory.createValue(l)
       case s: String => factory.createValue(s, PropertyType.STRING)
-      case v => throw new RuntimeException("Unsupported property value " + v)
+      case v => throw new OcmException("Unsupported property value " + v)
     }
   }
 

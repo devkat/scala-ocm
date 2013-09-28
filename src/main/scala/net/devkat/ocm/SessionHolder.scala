@@ -1,4 +1,4 @@
-package net.devkat.scalaocm
+package net.devkat.ocm
 
 import scala.util.DynamicVariable
 import javax.jcr.Node
@@ -14,7 +14,7 @@ trait SessionHolder extends Logging {
   protected val node2obj = new DynamicVariable[scala.collection.mutable.Map[Node, AnyRef]](null)
 
   implicit def jcrSession = currentSession.value match {
-    case null => throw new RuntimeException("Not logged in to repository.")
+    case null => throw new OcmException("Not logged in to repository.")
     case s => s
   }
 
@@ -55,12 +55,12 @@ trait SessionHolder extends Logging {
     }
   }
 
-  protected[scalaocm] def withNode[T <: AnyRef, U](r: T)(f: Node => U): U = node(r) match {
+  protected[ocm] def withNode[T <: AnyRef, U](r: T)(f: Node => U): U = node(r) match {
     case Some(node) => f(node)
-    case None => throw new RuntimeException("Object not bound to node.")
+    case None => throw new OcmException("Object not bound to node.")
   }
 
-  protected[scalaocm] def node(r: AnyRef): Option[Node] =
+  protected[ocm] def node(r: AnyRef): Option[Node] =
     node2obj.value.find { case ((node, obj)) => obj == r } map (_._1)
 
   def identifier(r: AnyRef): String = withNode(r) { _.getIdentifier }

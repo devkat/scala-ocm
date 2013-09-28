@@ -1,4 +1,4 @@
-package net.devkat.scalaocm
+package net.devkat.ocm
 
 import javax.jcr.Node
 

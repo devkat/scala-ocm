@@ -1,4 +1,4 @@
-package net.devkat.scalaocm
+package net.devkat.ocm
 
 case class Namespace(prefix:String, uri:String) {
   

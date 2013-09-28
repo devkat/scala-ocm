@@ -1,7 +1,8 @@
-package net.devkat.scalaocm
+package net.devkat.ocm
 
 import com.typesafe.scalalogging.slf4j.Logging
-import net.devkat.scalaocm.annotation.JcrProperty
+
+import net.devkat.ocm.annotation.JcrProperty
 import java.util.Calendar
 import org.specs2.execute.Result
 import java.util.GregorianCalendar
@@ -17,7 +18,8 @@ class PropertiesSpec extends ScalaOcmSpec with Logging {
   def checkProperty[T](v: T)(f: (Foo, T) => Unit)(g: Foo => T): Result = {
     try {
       transaction {
-        val foo = create[Foo](root / "foo")
+        val foo = new Foo
+        insert(foo, root / "foo")
         f(foo, v)
         update(foo)
       }
@@ -42,7 +44,7 @@ class PropertiesSpec extends ScalaOcmSpec with Logging {
     "Handle simple type properties" in {
       try {
         transaction {
-          val foo = create[Foo](root / "foo")
+          val foo = new Foo
           foo.byteArrayProp = Array[Byte](1, 2, 3)
           foo.bigDecimalProp = bigDecimal(3.14)
           foo.booleanProp = true
@@ -50,7 +52,7 @@ class PropertiesSpec extends ScalaOcmSpec with Logging {
           foo.doubleProp = 3.14
           foo.longProp = 2L
           foo.stringProp = "Foo"
-          update(foo)
+          insert(foo, root / "foo")
         }
         transaction {
           val foo = lookup[Foo](path).head
@@ -71,6 +73,23 @@ class PropertiesSpec extends ScalaOcmSpec with Logging {
         }
       }
     }
+    
+    "Complain about null values" in {
+      try {
+        transaction {
+          val foo = new Foo
+          foo.stringProp = null
+          insert(foo, root / "foo") must throwAn[OcmException]
+        }
+      } finally {
+        transaction {
+          jcrSession.getRootNode().getNodes("foo") foreach { _.remove() }
+          //lookup[Foo](path) map remove _
+        }
+      }
+    }
+    
+    
     /*
     "Handle Array[Byte] properties" in checkProperty(Array[Byte](1, 2, 3)) {
       _.byteArrayProp = _

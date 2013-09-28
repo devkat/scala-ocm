@@ -1,4 +1,4 @@
-package net.devkat.scalaocm
+package net.devkat.ocm
 
 import scala.reflect.runtime.universe
 import scala.reflect.runtime.universe._

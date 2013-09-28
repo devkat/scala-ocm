@@ -1,4 +1,4 @@
-package net.devkat.scalaocm
+package net.devkat.ocm
 
 import org.specs2.specification.AroundExample
 import org.specs2.mutable.Specification
@@ -32,7 +32,17 @@ trait ScalaOcmSpec extends Specification with AroundExample with Logging {
 
   protected def around[T: AsResult](t: => T): Result = {
     withRepo(RepoMgr.repository) {
-      AsResult(t)
+      try {
+        AsResult(t)
+      } finally {
+        // clean up
+        transaction {
+          val root = jcrSession.getRootNode()
+          List("foo", "bar") foreach { n =>
+            root.getNodes(n) foreach { _.remove() }
+          }
+        }
+      }
     }
   }
 
