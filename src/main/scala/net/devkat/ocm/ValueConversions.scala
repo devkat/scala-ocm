@@ -6,7 +6,7 @@ import org.apache.commons.io.IOUtils
 import javax.jcr.Value
 import javax.jcr.Session
 import javax.jcr.Property
-import javax.jcr.PropertyType
+//import javax.jcr.PropertyType
 import scala.reflect.runtime.universe
 import scala.reflect.runtime.universe._
 
@@ -14,7 +14,7 @@ object ValueConversions {
 
   import Extensions._
   import Reflection._
-
+/*
   def getPropertyType(p: Property): Type = p.getType match {
     case PropertyType.BINARY => typeOf[BinaryValue]
     case PropertyType.BOOLEAN => typeOf[BooleanValue]
@@ -31,23 +31,25 @@ object ValueConversions {
     case PropertyType.WEAKREFERENCE => typeOf[WeakReferenceValue]
     case t => throw new OcmException("Unknown property type " + PropertyType.nameFromValue(t))
   }
-  
-  def getValue(p: Value): SimpleValue[_] = p.getType match {
-    case PropertyType.BINARY => BinaryValue(IOUtils.toByteArray(p.getBinary.getStream))
-    case PropertyType.BOOLEAN => BooleanValue(p.getBoolean)
-    case PropertyType.DATE => DateValue(p.getDate)
-    case PropertyType.DECIMAL => DecimalValue(new BigDecimal(p.getDecimal))
-    case PropertyType.DOUBLE => DoubleValue(p.getDouble)
-    case PropertyType.LONG => LongValue(p.getLong)
-    case PropertyType.NAME => NameValue(p.getString)
-    case PropertyType.PATH => PathValue(Path.parse(p.getString))
-    case PropertyType.REFERENCE => ReferenceValue(p.getString)
-    case PropertyType.STRING => StringValue(p.getString)
-    case PropertyType.UNDEFINED => UndefinedValue()
-    case PropertyType.URI => UriValue(p.getString)
-    case PropertyType.WEAKREFERENCE => WeakReferenceValue(p.getString)
-    case t => throw new OcmException("Unknown property type " + PropertyType.nameFromValue(t))
-  }
+
+  def getValue(p: Value): SimpleValue[_] =
+    p.getType match {
+      case PropertyType.BINARY => BinaryValue(IOUtils.toByteArray(p.getBinary.getStream))
+      case PropertyType.BOOLEAN => BooleanValue(p.getBoolean)
+      case PropertyType.DATE => DateValue(p.getDate)
+      case PropertyType.DECIMAL => DecimalValue(new BigDecimal(p.getDecimal))
+      case PropertyType.DOUBLE => DoubleValue(p.getDouble)
+      case PropertyType.LONG => LongValue(p.getLong)
+      case PropertyType.NAME => NameValue(p.getString)
+      case PropertyType.PATH => PathValue(Path.parse(p.getString))
+      case PropertyType.REFERENCE => ReferenceValue(p.getString)
+      case PropertyType.STRING => StringValue(p.getString)
+      case PropertyType.UNDEFINED => UndefinedValue()
+      case PropertyType.URI => UriValue(p.getString)
+      case PropertyType.WEAKREFERENCE => WeakReferenceValue(p.getString)
+      case t => throw new OcmException("Unknown property type " + PropertyType.nameFromValue(t))
+    }
+*/
 
   def any2valueOption(v: Any)(implicit jcrSession: Session): Option[Value] = {
     v match {
@@ -66,7 +68,7 @@ object ValueConversions {
       case d: Double => factory.createValue(d)
       case i: Int => factory.createValue(i)
       case l: Long => factory.createValue(l)
-      case s: String => factory.createValue(s, PropertyType.STRING)
+      case s: String => factory.createValue(s, javax.jcr.PropertyType.STRING)
       case v => throw new OcmException("Unsupported property value " + v)
     }
   }

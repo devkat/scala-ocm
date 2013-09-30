@@ -13,10 +13,10 @@ trait DirectTypeMapper extends Mapper with Logging {
     field.set(value)
   }
 
-  def getFieldValue(field: FieldMirror): Any =
-    field.get
+  def getFieldValue[T](field: FieldMirror): T =
+    field.get.asInstanceOf[T]
 
-  def getFieldType(field: TermSymbol): Type = {
+  def getFieldType(field: TermSymbol): PropertyType[_] = {
     val sig = field.typeSignature
     TypeMapper.getPropertyType(sig) match {
       case Some(t) => t

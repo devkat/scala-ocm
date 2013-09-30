@@ -9,7 +9,7 @@ import net.devkat.ocm.annotation.JcrProperty
 
 case class FieldMetaData(
   term: TermSymbol,
-  valueType: Type)
+  valueType: PropertyType[_])
 
 trait Mapper extends Logging {
 
@@ -20,9 +20,9 @@ trait Mapper extends Logging {
 
   def setFieldValue(field: FieldMirror, value: Any): Unit
 
-  def getFieldValue(field: FieldMirror): Any
+  def getFieldValue[T](field: FieldMirror): T
 
-  def getFieldType(field: TermSymbol): Type
+  def getFieldType(field: TermSymbol): PropertyType[_]
 
   protected def jcrPath(node: Node) = Path.parse(node.getPath)
 
@@ -41,12 +41,9 @@ trait Mapper extends Logging {
     getMappedFields(mirror.symbol) foreach { field =>
       val name = fieldName(field.term)
       val value = getPropertyValue(node, name, getFieldType(field.term))
-      logger.info("Loading property {}.{} := {}", node.getPath, name, value)
+      logger.info("Loading property {}.{} := {}", node.getPath, name, value.toString)
+      setFieldValue(mirror.reflectField(field.term), value)
       //instanceMirror.reflectField(field).set(value.orNull)
-      value match {
-        case Left(error) => throw new OcmException(error)
-        case Right(v) => setFieldValue(mirror.reflectField(field.term), v.value)
-      }
     }
   }
 
@@ -55,10 +52,12 @@ trait Mapper extends Logging {
 
       val mirror = instanceMirror(r)
       getMappedFields(mirror.symbol) foreach { field =>
-        val v = getFieldValue(mirror.reflectField(field.term))
+        val v = getFieldValue[Any](mirror.reflectField(field.term))
         val name = fieldName(field.term)
-        val t = getFieldType(field.term)
+        val t:PropertyType[_] = getFieldType(field.term)
+        //t.set(n, name, v)
 
+        /*
         val isSimple = t <:< typeOf[SimpleValue[_]]
         val isMulti = t <:< typeOf[MultiValue[_]]
         val isOption = t <:< typeOf[OptionValue[_]]
@@ -78,12 +77,13 @@ trait Mapper extends Logging {
             case None => if (n.hasProperty(name)) n.getProperty(name).remove()
           }
         }
+        */
 
         logger.info("Save property {}.{} = {}, saved to {}",
             jcrPath(n),
             name,
             if (v == null) "null" else v.toString,
-            getPropertyValue(n, name, getFieldType(field.term)))
+            getPropertyValue(n, name, getFieldType(field.term)).toString)
       }
     }
   }
@@ -94,8 +94,10 @@ trait Mapper extends Logging {
         t.annotations.find(_.tpe == typeOf[JcrProperty]).isDefined => FieldMetaData(t, getFieldType(t))
     }
 
-  protected def getPropertyValue(node: Node, name: String, t: Type): Either[String, PropertyValue[_]] = {
+  protected def getPropertyValue[T](node: Node, name: String, t: PropertyType[T]): T = {
+    t.get(node, name)
 
+    /*
     val isSimple = t <:< typeOf[SimpleValue[_]]
     val isMulti = t <:< typeOf[MultiValue[_]]
     val isOption = t <:< typeOf[OptionValue[_]]
@@ -116,6 +118,7 @@ trait Mapper extends Logging {
       else if (isMulti) Right(MultiValue(List.empty[SimpleValue[_]]))
       else Left("Simple-value field '%s' can't be set from null-value property.".format(name))
     }
+    */
   }
 
 }

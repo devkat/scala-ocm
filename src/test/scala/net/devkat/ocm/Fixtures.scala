@@ -3,11 +3,11 @@ package net.devkat.ocm
 import DirectTypeOcm._
 import Path.root
 import java.util.Calendar
-
 import net.devkat.ocm.DirectTypeOcm._
 import net.devkat.ocm.Path.root
 import net.devkat.ocm.annotation.JcrProperty
-import net.devkat.ocm.node.Folder
+import net.devkat.ocm.nodetype.Folder
+import net.devkat.ocm.macros.node
 
 class Foo {
   @JcrProperty var byteArrayProp: Array[Byte] = _
