@@ -9,6 +9,15 @@ trait DirectTypeMapper extends Mapper with Logging {
 
   import Reflection._
 
+  def writeProperty[T](r: Any, name: String, tpe: PropertyType[T], value: T) {
+    println(s"Writing property: ${r.getClass.getName}.${name} = ${value}")
+  }
+  
+  def readProperty[T](r: Any, name: String, tpe: PropertyType[T]): T = {
+    println(s"Reading property: ${r.getClass.getName}.${name}")
+    null.asInstanceOf[T]
+  }
+
   def setFieldValue(field: FieldMirror, value: Any) {
     field.set(value)
   }

@@ -8,20 +8,19 @@ import scala.annotation.StaticAnnotation
 import com.typesafe.scalalogging.slf4j.Logging
 import java.util.Calendar
 import scala.tools.reflect.Eval
-import scala.collection.immutable.StringOps
 
 import net.devkat.ocm.PropertyType
 
-class node extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro OcmMacro.node_impl
+class nodeRuntime extends StaticAnnotation {
+  def macroTransform(annottees: Any*) = macro RuntimeOcmMacro.node_impl
 }
 
-class property(val propertyType: PropertyType[_] = null) extends StaticAnnotation
+class propertyRuntime(val propertyType: PropertyType[_] = null) extends StaticAnnotation
 
 /*
  * https://github.com/adamw/scala-macro-aop/blob/master/macros/src/main/scala/com/softwaremill/aop/delegateMacro.scala
  */
-object OcmMacro extends Logging {
+object RuntimeOcmMacro extends Logging {
 
   def getType[T](c: Context)(x: c.Expr[T]): Type = {
     // creates a runtime reflection universe to host runtime compilation
@@ -39,13 +38,13 @@ object OcmMacro extends Logging {
 
     // the created importer is used to turn a compiler tree into a runtime compiler tree
     // both compilers use the same classpath, so semantics remains intact
-    val imported: Tree = importer.importTree(x.tree)
+    val imported:Tree = importer.importTree(x.tree)
 
     // after the tree is imported, it can be evaluated as usual
     val tree = toolBox.resetAllAttrs(imported.duplicate)
-    toolBox.eval(q"import java.util.Calendar; scala.reflect.runtime.universe.typeOf[$imported]").asInstanceOf[Type]
+    toolBox.eval(q"scala.reflect.runtime.universe.typeOf[$imported]").asInstanceOf[Type]
   }
-
+  
   def reportInvalidAnnotationTarget(c: Context)(t: Any) {
     c.error(c.enclosingPosition, s"This annotation can't be used on ${t}.")
   }
@@ -56,80 +55,73 @@ object OcmMacro extends Logging {
     def getPropertyAnnotation(field: ValDef) =
       field.mods.annotations.find(_.find(t => (t.tpe != null) && (t.tpe =:= typeOf[property])).isDefined)
 
-    def propType(name: String) =
-      Select(Ident(reify(PropertyType).tree.symbol), newTermName(name))
-
-    object SimpleType {
-      def unapply(t: Tree): Option[String] = t match {
-        case Ident(name) => Some(name.decoded)
-        case _ => None
-      }
+    def dump(t: Tree): String = {
+      s"""[${t.getClass.getName}] ${t.toString} (${t.children.map(dump _).mkString(", ")})"""
     }
 
-    object MappableBaseType {
-      def unapply(t: Tree): Option[Tree] = {
-        val tpe = getType(c)(c.Expr[Type](t))
-        if (tpe =:= universe.typeOf[Array[Byte]]) Some(propType("binary")) else
-        if (tpe =:= universe.typeOf[BigDecimal]) Some(propType("decimal")) else
-        if (tpe =:= universe.typeOf[Calendar]) Some(propType("date")) else
-        if (tpe =:= universe.typeOf[Double]) Some(propType("double")) else
-        if (tpe =:= universe.typeOf[Long]) Some(propType("long")) else
-        if (tpe =:= universe.typeOf[String]) Some(propType("string")) else
-        if (tpe =:= universe.typeOf[Option[Array[Byte]]]) Some(propType("optionalBinary")) else
-        if (tpe =:= universe.typeOf[Option[BigDecimal]]) Some(propType("optionalDecimal")) else
-        if (tpe =:= universe.typeOf[Option[Calendar]]) Some(propType("optionalDate")) else
-        if (tpe =:= universe.typeOf[Option[Double]]) Some(propType("optionalDouble")) else
-        if (tpe =:= universe.typeOf[Option[Long]]) Some(propType("optionalLong")) else
-        if (tpe =:= universe.typeOf[Option[String]]) Some(propType("optionalString")) else
-        if (tpe <:< universe.typeOf[Iterable[Array[Byte]]]) Some(propType("multiBinary")) else
-        if (tpe <:< universe.typeOf[Iterable[BigDecimal]]) Some(propType("multiDecimal")) else
-        if (tpe <:< universe.typeOf[Iterable[Calendar]]) Some(propType("multiDate")) else
-        if (tpe <:< universe.typeOf[Iterable[Double]]) Some(propType("multiDouble")) else
-        if (tpe <:< universe.typeOf[Iterable[Long]]) Some(propType("multiLong")) else
-        if (tpe <:< universe.typeOf[Iterable[String]]) Some(propType("multiString")) else
-        None
+    lazy val type2propertyType_string = Map(
+      "Array[Byte]" -> "binary",
+      "BigDecimal" -> "decimal",
+      "Calendar" -> "date",
+      "Double" -> "double",
+      "Long" -> "long",
+      "String" -> "string")
+
+    lazy val type2propertyType = {
+      import PropertyType._
+      import scala.reflect.runtime.universe._
+      Map[Type, PropertyType[_]](
+        typeOf[Array[Byte]] -> binary,
+        typeOf[BigDecimal] -> decimal,
+        typeOf[Calendar] -> date,
+        typeOf[Double] -> double,
+        typeOf[Long] -> long,
+        typeOf[String] -> string)
+    }
+
+    def defaultPropType(t: scala.reflect.runtime.universe.Type): Option[PropertyType[_]] =
+      type2propertyType.find { case (t2, pt) => t =:= t2 }.map(_._2)
+
+    lazy val container2prefix = Map(
+      "Option" -> "optional",
+      "Iterable" -> "multi")
+
+    def defaultPropertyType(varType: scala.reflect.runtime.universe.Type): Tree = {
+      import PropertyType._
+      def invalid = {
+        c.error(c.enclosingPosition, s"Invalid property type ${showRaw(varType)}")
+        EmptyTree
       }
+      def propType(name: String): Tree =
+        Select(Ident(reify(PropertyType).tree.symbol), newTermName(name))
+
+      defaultPropType(varType).map(t => {
+        val symbol = t.asInstanceOf[TypeRef].pre.typeSymbol
+        q"$symbol"
+      }).getOrElse(invalid)
+      
+      //println("TREE: " + showRaw(reify(string).tree))
+      // Select(Ident(net.devkat.ocm.PropertyType), newTermName("string"))
       /*
-      def unapply(t: Tree): Option[Tree] = t match {
-        case SimpleType("BigDecimal") => Some(propType("decimal"))
-        case SimpleType("Calendar") => Some(propType("date"))
-        case SimpleType("Double") => Some(propType("double"))
-        case Ident(q"scala.predef.Long") => Some(propType("long"))
-        case Ident(q"scala.predef.String") => Some(propType("string"))
-        //case q"${String}" => Some(propType("string"))
-        case Ident(q"scala.predef.String") => Some(propType("string"))
-        case AppliedTypeTree(Ident(q"Array"), List(Ident(q"Byte"))) => Some(propType("binary"))
-        case t => {
-          logger.error("Unmappable base type: " + showRaw(t))
-          None
+      varType match {
+        case Ident(typeName) => {
+          val typeSym = c.mirror.staticClass(varType.)
+          defaultPropType(typeSym.toType).map(t => {
+            val symbol = c.mirror.staticModule(t.getClass.getName)
+            q"$symbol"
+          }).getOrElse(invalid)
         }
+        case AppliedTypeTree(Ident(containerTypeName), List(Ident(baseTypeName))) if List("Option", "Iterable").contains(containerTypeName.decoded) => {
+          type2propertyType.get(baseTypeName.decoded).map(n => propType(container2prefix(containerTypeName.decoded) + n)).getOrElse(invalid)
+        }
+        case AppliedTypeTree(Ident(containerType), List(Ident(baseType))) if List("Option", "List").contains(containerType.decoded) => {
+          containerType.decoded match {
+            case "Option" => baseType 
+          }
+        }
+        case _ => invalid
       }
-    	 */
-    }
-
-    object MappableType {
-      def genType(baseType: Name, prefix: String): Tree =
-        propType(prefix + new StringOps(baseType.decoded).capitalize)
-
-      def unapply(t: Tree): Option[Tree] = t match {
-        case AppliedTypeTree(Ident(q"Option"), List(MappableBaseType(Select(_, q"$bt")))) => Some(genType(bt, "optional"))
-        case AppliedTypeTree(Ident(q"Iterable"), List(MappableBaseType(Select(_, q"$bt")))) => Some(genType(bt, "multi"))
-        case MappableBaseType(bt) => Some(bt)
-        case _ => None
-      }
-    }
-
-    def invalid(varType: Tree) = {
-      c.error(c.enclosingPosition, s"Can't map property type ${show(varType)} (${showRaw(varType)})")
-      EmptyTree
-    }
-
-    /**
-     * Map mappable type to property type.
-     */
-    def mapType(t: Tree): Option[Tree] = t match {
-      case MappableType(tpe) => Some(tpe)
-      case _ => None
+       */
     }
 
     def addAccessors(classDef: ClassDef) = {
@@ -140,9 +132,28 @@ object OcmMacro extends Logging {
           case field @ ValDef(mods, name, typeTree, rhs) => {
             val plainFieldName = name.decoded
             val varName = newTermName("_" + name.decoded)
+            val runtimeVarType = getType(c)(c.Expr[Type](field.tpt))
+            logger.info(s"Type of ${plainFieldName}: ${typeTree}")
             val setterName = newTermName(name.decoded + "_$eq")
             val nameLiteral = Literal(Constant(plainFieldName))
 
+            /*
+            println(plainFieldName + " =>\n  " + field.mods.annotations.map( a =>
+              a.symbol//dump(a)
+              ).mkString("\n  ") )
+            */
+
+            /*
+            val ann = field.mods.annotations.map{
+              _.collect{
+                case a @ Apply(Select(New(Ident(typeName)), nme.CONSTRUCTOR), params) if typeName.decoded == "property" => {
+                  params collect {
+                    case AssignOrNamedArg(Ident(paramName), Literal(Constant(paramValue))) => (paramName.decoded, paramValue)
+                  }
+                }
+              }
+            }.headOption
+            */
             val ann = mods.annotations.collect {
               case Apply(Select(New(Ident(typeName)), nme.CONSTRUCTOR), paramTrees) if typeName.decoded == "property" => {
                 paramTrees.collect {
@@ -151,21 +162,30 @@ object OcmMacro extends Logging {
               }
             }.headOption
 
-            ann.map(_.get("propertyType")).getOrElse(mapType(typeTree)) match {
-              case Some(propertyType) => {
-                logger.info(s"Mapping field ${className}.${plainFieldName} to ${propertyType} property '${plainFieldName}'.")
-                List(
-                  //q"private var $varName:$varType = _",
-                  q"""def $name = readProperty[$typeTree](this, ${nameLiteral}, ${propertyType})""",
-                  //q"def $setterName(a: $varType) = $varName = a"
-                  q"""def $setterName(a: $typeTree) {
-	                println("Setting variable to %s".format(a))
-	                writeProperty[$typeTree](this, ${nameLiteral}, ${propertyType}, a)
-	              }"""): List[Tree]
-              }
-              case None => List(invalid(typeTree))
+            //lazy val defaultPropertyType = q"PropertyType.defaultPropertyType[$varType]"
+            /*
+            lazy val defaultPropertyType = {
+              val t = PropertyType.defaultPropertyType()(TypeTag.)
+              reify(t)
+            }
+            */
+            lazy val defaultType = defaultPropertyType(runtimeVarType)
+
+            val propertyType: Tree = ann match {
+              case Some(params) => params.get("propertyType").getOrElse(defaultType)
+              case None => defaultType
             }
 
+            logger.info(s"Mapping field ${className}.${plainFieldName} to ${propertyType} property '${plainFieldName}'.")
+
+            List(
+              //q"private var $varName:$varType = _",
+              q"""def $name = readProperty[$typeTree](this, ${nameLiteral}, ${propertyType})""",
+              //q"def $setterName(a: $varType) = $varName = a"
+              q"""def $setterName(a: $typeTree) {
+                println("Setting variable to %s".format(a))
+                writeProperty[$typeTree](this, ${nameLiteral}, ${propertyType}, a)
+              }"""): List[Tree]
           }
           case t => List(t)
         }

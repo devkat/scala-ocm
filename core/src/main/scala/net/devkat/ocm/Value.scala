@@ -8,13 +8,8 @@ import org.apache.commons.io.IOUtils
 import javax.jcr.Session
 import java.io.ByteArrayInputStream
 
-sealed abstract class PropertyType[T](propertyType: Int) {
-  def set(node: Node, name: String, t: T)(implicit jcrSession: Session): Unit
-  def get(node: Node, name: String): T
-}
-
 //case object BinaryType extends PropertyType[Array[Byte]](javax.jcr.PropertyType.BINARY)
-
+/*
 object PropertyHelper {
 
   def value2any(propertyType: Int)(p: Value): Any =
@@ -123,9 +118,9 @@ case class MultiType[T](propertyType: Int) extends PropertyType[List[T]](propert
   }
 
 }
-
+*/
 object TypeMapper {
-
+/*
   def getSimplePropertyType(baseType: Type): Option[SimpleType[_]] = {
     if (baseType =:= typeOf[Array[Byte]]) Some(SimpleType[Array[Byte]](javax.jcr.PropertyType.BINARY))
     else if (baseType =:= typeOf[BigDecimal]) Some(SimpleType[BigDecimal](javax.jcr.PropertyType.DECIMAL))
@@ -158,8 +153,10 @@ object TypeMapper {
     else if (baseType =:= typeOf[String]) Some(MultiType[String](javax.jcr.PropertyType.STRING))
     else None
   }
-
+*/
   def getPropertyType(baseType: Type): Option[PropertyType[_]] = {
+    null
+    /*
     getSimplePropertyType(baseType) match {
       case t @ Some(_) => t
       case None => {
@@ -178,5 +175,6 @@ object TypeMapper {
         }
       }
     }
+    */
   }
 }

@@ -18,6 +18,10 @@ trait Mapper extends Logging {
   import Reflection._
   import ValueConversions._
 
+  def writeProperty[T](r: Any, name: String, tpe: PropertyType[T], value: T)
+  
+  def readProperty[T](r: Any, name: String, tpe: PropertyType[T]): T
+  
   def setFieldValue(field: FieldMirror, value: Any): Unit
 
   def getFieldValue[T](field: FieldMirror): T
@@ -95,7 +99,8 @@ trait Mapper extends Logging {
     }
 
   protected def getPropertyValue[T](node: Node, name: String, t: PropertyType[T]): T = {
-    t.get(node, name)
+    //t.get(node, name)
+    null.asInstanceOf[T]
 
     /*
     val isSimple = t <:< typeOf[SimpleValue[_]]
