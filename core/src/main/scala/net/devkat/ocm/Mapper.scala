@@ -16,11 +16,10 @@ trait Mapper extends Logging {
   self: SessionHolder =>
 
   import Reflection._
-  import ValueConversions._
 
-  def writeProperty[T](r: Any, name: String, tpe: PropertyType[T], value: T)
+  def writeProperty[T](r: AnyRef, name: String, tpe: PropertyType[T], value: T)
   
-  def readProperty[T](r: Any, name: String, tpe: PropertyType[T]): T
+  def readProperty[T](r: AnyRef, name: String, tpe: PropertyType[T]): T
   
   def setFieldValue(field: FieldMirror, value: Any): Unit
 
@@ -33,7 +32,7 @@ trait Mapper extends Logging {
   protected def fromNode[T <: AnyRef](n: Node)(implicit m: Manifest[T]): T = {
     node2obj.value.getOrElseUpdate(n, {
       val r = newInstance[T]
-      load(r, n)
+      //load(r, n)
       r
     }).asInstanceOf[T]
   }
@@ -51,7 +50,10 @@ trait Mapper extends Logging {
     }
   }
 
-  protected def save(r: AnyRef) = {
+
+   protected def save(r: AnyRef) = {}
+    
+   protected def save_(r: AnyRef) = {
     withNode(r) { n =>
 
       val mirror = instanceMirror(r)

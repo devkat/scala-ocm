@@ -14,8 +14,14 @@ trait Crud {
   private val classNameProperty = "class"
 
   implicit def path(r: AnyRef) = withNode(r) { jcrPath _ }
+  
+  def create[T <: AnyRef : TypeTag](path: Path): T = {
+    val r = newInstance[T]
+    insert(r, path)
+    r
+  }
 
-  def insert(r: AnyRef, path: Path) {
+  protected def insert(r: AnyRef, path: Path) {
     val node = jcrSession.getRootNode.addNode(path.names mkString "/")
     node.setProperty(scalaOcmNamespace.prefixed(classNameProperty), r.getClass.getName)
     node2obj.value.put(node, r)

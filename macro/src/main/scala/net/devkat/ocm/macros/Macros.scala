@@ -10,7 +10,7 @@ import java.util.Calendar
 import scala.tools.reflect.Eval
 import scala.collection.immutable.StringOps
 
-import net.devkat.ocm.PropertyType
+import net.devkat.ocm.{JcrType, PropertyType}
 
 class node extends StaticAnnotation {
   def macroTransform(annottees: Any*) = macro OcmMacro.node_impl
@@ -22,14 +22,13 @@ class property(val propertyType: PropertyType[_] = null) extends StaticAnnotatio
  * https://github.com/adamw/scala-macro-aop/blob/master/macros/src/main/scala/com/softwaremill/aop/delegateMacro.scala
  */
 object OcmMacro extends Logging {
-
-  def getType[T](c: Context)(x: c.Expr[T]): Type = {
+  
+  def runtimeExpr[T1, T2](c: Context)(x: c.Expr[T1], codeCtx: Tree => Tree): T2 = {
+    import scala.tools.reflect.ToolBox
     // creates a runtime reflection universe to host runtime compilation
     import scala.reflect.runtime.{ universe => ru }
     //val mirror = ru.runtimeMirror(c.libraryClassLoader)
     val mirror = ru.runtimeMirror(getClass.getClassLoader)
-    import scala.tools.reflect.ToolBox
-    val toolBox = mirror.mkToolBox()
 
     // runtime reflection universe and compile-time macro universe are different
     // therefore an importer is needed to bridge them
@@ -42,9 +41,13 @@ object OcmMacro extends Logging {
     val imported: Tree = importer.importTree(x.tree)
 
     // after the tree is imported, it can be evaluated as usual
+    val toolBox = mirror.mkToolBox()
     val tree = toolBox.resetAllAttrs(imported.duplicate)
-    toolBox.eval(q"import java.util.Calendar; scala.reflect.runtime.universe.typeOf[$imported]").asInstanceOf[Type]
+    toolBox.eval(codeCtx(imported)).asInstanceOf[T2]
   }
+
+  def runtimeType(c: Context)(x: c.Expr[c.universe.Type]): Type = runtimeExpr(c)(x,
+      imported => q"import java.util.Calendar; scala.reflect.runtime.universe.typeOf[$imported]")
 
   def reportInvalidAnnotationTarget(c: Context)(t: Any) {
     c.error(c.enclosingPosition, s"This annotation can't be used on ${t}.")
@@ -56,6 +59,37 @@ object OcmMacro extends Logging {
     def getPropertyAnnotation(field: ValDef) =
       field.mods.annotations.find(_.find(t => (t.tpe != null) && (t.tpe =:= typeOf[property])).isDefined)
 
+    object MappableType {
+      import JcrType._
+      import PropertyType._
+      def unapply(t: Tree): Option[Tree] = {
+        val tpe = runtimeType(c)(c.Expr[Type](t))
+        (if (tpe =:= universe.typeOf[Array[Byte]]) Some(reify(simple(binary))) else
+        if (tpe =:= universe.typeOf[Boolean]) Some(reify(simple(boolean))) else
+        if (tpe =:= universe.typeOf[BigDecimal]) Some(reify(simple(decimal))) else
+        if (tpe =:= universe.typeOf[Calendar]) Some(reify(simple(date))) else
+        if (tpe =:= universe.typeOf[Double]) Some(reify(simple(double))) else
+        if (tpe =:= universe.typeOf[Long]) Some(reify(simple(long))) else
+        if (tpe =:= universe.typeOf[String]) Some(reify(simple(string))) else
+        if (tpe =:= universe.typeOf[Option[Array[Byte]]]) Some(reify(optional(binary))) else
+        if (tpe =:= universe.typeOf[Option[BigDecimal]]) Some(reify(optional(decimal))) else
+        if (tpe =:= universe.typeOf[Option[Boolean]]) Some(reify(optional(boolean))) else
+        if (tpe =:= universe.typeOf[Option[Calendar]]) Some(reify(optional(date))) else
+        if (tpe =:= universe.typeOf[Option[Double]]) Some(reify(optional(double))) else
+        if (tpe =:= universe.typeOf[Option[Long]]) Some(reify(optional(long))) else
+        if (tpe =:= universe.typeOf[Option[String]]) Some(reify(optional(string))) else
+        if (tpe <:< universe.typeOf[Iterable[Array[Byte]]]) Some(reify(multi(binary))) else
+        if (tpe <:< universe.typeOf[Iterable[BigDecimal]]) Some(reify(multi(decimal))) else
+        if (tpe <:< universe.typeOf[Iterable[Boolean]]) Some(reify(multi(boolean))) else
+        if (tpe <:< universe.typeOf[Iterable[Calendar]]) Some(reify(multi(date))) else
+        if (tpe <:< universe.typeOf[Iterable[Double]]) Some(reify(multi(double))) else
+        if (tpe <:< universe.typeOf[Iterable[Long]]) Some(reify(multi(long))) else
+        if (tpe <:< universe.typeOf[Iterable[String]]) Some(reify(multi(string))) else
+        None).map(_.tree)
+      }
+    }
+      
+    /*
     def propType(name: String) =
       Select(Ident(reify(PropertyType).tree.symbol), newTermName(name))
 
@@ -66,10 +100,11 @@ object OcmMacro extends Logging {
       }
     }
 
-    object MappableBaseType {
+    object MappableType {
       def unapply(t: Tree): Option[Tree] = {
-        val tpe = getType(c)(c.Expr[Type](t))
+        val tpe = runtimeType(c)(c.Expr[Type](t))
         if (tpe =:= universe.typeOf[Array[Byte]]) Some(propType("binary")) else
+        if (tpe =:= universe.typeOf[Boolean]) Some(propType("boolean")) else
         if (tpe =:= universe.typeOf[BigDecimal]) Some(propType("decimal")) else
         if (tpe =:= universe.typeOf[Calendar]) Some(propType("date")) else
         if (tpe =:= universe.typeOf[Double]) Some(propType("double")) else
@@ -77,36 +112,23 @@ object OcmMacro extends Logging {
         if (tpe =:= universe.typeOf[String]) Some(propType("string")) else
         if (tpe =:= universe.typeOf[Option[Array[Byte]]]) Some(propType("optionalBinary")) else
         if (tpe =:= universe.typeOf[Option[BigDecimal]]) Some(propType("optionalDecimal")) else
+        if (tpe =:= universe.typeOf[Option[Boolean]]) Some(propType("optionalBoolean")) else
         if (tpe =:= universe.typeOf[Option[Calendar]]) Some(propType("optionalDate")) else
         if (tpe =:= universe.typeOf[Option[Double]]) Some(propType("optionalDouble")) else
         if (tpe =:= universe.typeOf[Option[Long]]) Some(propType("optionalLong")) else
         if (tpe =:= universe.typeOf[Option[String]]) Some(propType("optionalString")) else
         if (tpe <:< universe.typeOf[Iterable[Array[Byte]]]) Some(propType("multiBinary")) else
         if (tpe <:< universe.typeOf[Iterable[BigDecimal]]) Some(propType("multiDecimal")) else
+        if (tpe <:< universe.typeOf[Iterable[Boolean]]) Some(propType("multiBoolean")) else
         if (tpe <:< universe.typeOf[Iterable[Calendar]]) Some(propType("multiDate")) else
         if (tpe <:< universe.typeOf[Iterable[Double]]) Some(propType("multiDouble")) else
         if (tpe <:< universe.typeOf[Iterable[Long]]) Some(propType("multiLong")) else
         if (tpe <:< universe.typeOf[Iterable[String]]) Some(propType("multiString")) else
         None
       }
-      /*
-      def unapply(t: Tree): Option[Tree] = t match {
-        case SimpleType("BigDecimal") => Some(propType("decimal"))
-        case SimpleType("Calendar") => Some(propType("date"))
-        case SimpleType("Double") => Some(propType("double"))
-        case Ident(q"scala.predef.Long") => Some(propType("long"))
-        case Ident(q"scala.predef.String") => Some(propType("string"))
-        //case q"${String}" => Some(propType("string"))
-        case Ident(q"scala.predef.String") => Some(propType("string"))
-        case AppliedTypeTree(Ident(q"Array"), List(Ident(q"Byte"))) => Some(propType("binary"))
-        case t => {
-          logger.error("Unmappable base type: " + showRaw(t))
-          None
-        }
-      }
-    	 */
     }
-
+*/
+    /*
     object MappableType {
       def genType(baseType: Name, prefix: String): Tree =
         propType(prefix + new StringOps(baseType.decoded).capitalize)
@@ -118,6 +140,7 @@ object OcmMacro extends Logging {
         case _ => None
       }
     }
+    */
 
     def invalid(varType: Tree) = {
       c.error(c.enclosingPosition, s"Can't map property type ${show(varType)} (${showRaw(varType)})")
@@ -150,8 +173,13 @@ object OcmMacro extends Logging {
                 }.toMap
               }
             }.headOption
-
-            ann.map(_.get("propertyType")).getOrElse(mapType(typeTree)) match {
+            
+            val propertyType:Option[Tree] = ann.flatMap(_.get("propertyType")) match {
+              case None => mapType(typeTree)
+              case t => t
+            }
+            
+            propertyType match {
               case Some(propertyType) => {
                 logger.info(s"Mapping field ${className}.${plainFieldName} to ${propertyType} property '${plainFieldName}'.")
                 List(

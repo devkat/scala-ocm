@@ -13,7 +13,8 @@ object ScalaOcmBuild extends Build {
       "javax.jcr" % "jcr" % "2.0",
       "org.specs2" %% "specs2" % "2.2" % "test"
       //"junit" % "junit" % "4.11" % "test"
-    )
+    ),
+    parallelExecution in Test := false
   )
   
   lazy val common = Project("scala-ocm-common", file("common")) settings (buildSettings ++ Seq(
@@ -35,7 +36,6 @@ object ScalaOcmBuild extends Build {
       "org.apache.jackrabbit" % "jackrabbit-core" % "2.7.0" % "test",
       "commons-io" % "commons-io" % "2.4"
     ),
-    parallelExecution in Test := false,
     testOptions in Test += Tests.Setup(() => {
       System.setProperty("org.apache.jackrabbit.repository.conf", "classpath:repository.xml")
       System.setProperty("org.apache.jackrabbit.repository.home", "target/repository")

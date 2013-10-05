@@ -7,27 +7,28 @@ import net.devkat.ocm.DirectTypeOcm._
 import net.devkat.ocm.Path.root
 import net.devkat.ocm.annotation.JcrProperty
 import net.devkat.ocm.nodetype.Folder
-import net.devkat.ocm.macros.node
+import net.devkat.ocm.macros._
 
+@node
 class Foo {
-  @JcrProperty var byteArrayProp: Array[Byte] = _
-  @JcrProperty var bigDecimalProp: BigDecimal = _
-  @JcrProperty var booleanProp: Boolean = _
-  @JcrProperty var calendarProp: Calendar = _
-  @JcrProperty var doubleProp: Double = _
-  @JcrProperty var longProp: Long = _
-  @JcrProperty var stringProp: String = _
+  @property var byteArrayProp: Array[Byte] = _
+  @property var bigDecimalProp: BigDecimal = _
+  @property var booleanProp: Boolean = _
+  @property var calendarProp: Calendar = _
+  @property var doubleProp: Double = _
+  @property var longProp: Long = _
+  @property var stringProp: String = _
 
-  @JcrProperty var byteArrayOptionProp: Option[Array[Byte]] = _
-  @JcrProperty var bigDecimalOptionProp: Option[BigDecimal] = _
-  @JcrProperty var booleanOptionProp: Option[Boolean] = _
-  @JcrProperty var calendarOptionProp: Option[Calendar] = _
-  @JcrProperty var doubleOptionProp: Option[Double] = _
-  @JcrProperty var longOptionProp: Option[Long] = _
-  @JcrProperty var stringOptionProp: Option[String] = _
+  @property var byteArrayOptionProp: Option[Array[Byte]] = _
+  @property var bigDecimalOptionProp: Option[BigDecimal] = _
+  @property var booleanOptionProp: Option[Boolean] = _
+  @property var calendarOptionProp: Option[Calendar] = _
+  @property var doubleOptionProp: Option[Double] = _
+  @property var longOptionProp: Option[Long] = _
+  @property var stringOptionProp: Option[String] = _
 
 }
 
 class Bar {
-  @JcrProperty var name: String = _
+  @property var name: String = _
 }

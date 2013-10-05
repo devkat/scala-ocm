@@ -2,21 +2,22 @@ package net.devkat.ocm
 
 import scala.reflect.runtime.universe._
 import com.typesafe.scalalogging.slf4j.Logging
+import java.io.ByteArrayInputStream
 
 trait DirectTypeMapper extends Mapper with Logging {
 
   self: SessionHolder =>
 
   import Reflection._
+  import PropertyType._
+  import PropertyAccessor._
 
-  def writeProperty[T](r: Any, name: String, tpe: PropertyType[T], value: T) {
-    println(s"Writing property: ${r.getClass.getName}.${name} = ${value}")
+  def writeProperty[T](r: AnyRef, name: String, t: PropertyType[T], value: T) {
+    withNode(r) { node => setProperty(node, name, t, value) }
   }
-  
-  def readProperty[T](r: Any, name: String, tpe: PropertyType[T]): T = {
-    println(s"Reading property: ${r.getClass.getName}.${name}")
-    null.asInstanceOf[T]
-  }
+
+  def readProperty[T](r: AnyRef, name: String, t: PropertyType[T]): T =
+    withNode(r) { node => getProperty(node, name, t) }
 
   def setFieldValue(field: FieldMirror, value: Any) {
     field.set(value)
@@ -27,11 +28,14 @@ trait DirectTypeMapper extends Mapper with Logging {
 
   def getFieldType(field: TermSymbol): PropertyType[_] = {
     val sig = field.typeSignature
+    null.asInstanceOf[PropertyType[_]]
+    /*
     TypeMapper.getPropertyType(sig) match {
       case Some(t) => t
       case t @ None => throw new OcmException(
-          "Unsupported type %s for field '%s'".format(sig, fieldName(field)))
+        "Unsupported type %s for field '%s'".format(sig, fieldName(field)))
     }
+    */
   }
 
 }

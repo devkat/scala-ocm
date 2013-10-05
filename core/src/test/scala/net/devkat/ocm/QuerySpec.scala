@@ -13,9 +13,8 @@ class QuerySpec extends ScalaOcmSpec with Logging {
 
     "Lookup an object" in {
       transaction {
-        val bar = new Bar
+        val bar = create[Bar](root / "bar")
         bar.name = "Bar"
-        insert(bar, root / "bar")
       }
       transaction {
         val bar = lookup[Bar](root / "bar")

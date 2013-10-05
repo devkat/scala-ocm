@@ -5,7 +5,7 @@ import scala.reflect.runtime.universe._
 
 object Reflection {
 
-  protected[ocm] def newInstance[T]()(implicit m: Manifest[T]): T = {
+  protected[ocm] def newInstance[T:TypeTag](): T = {
     val mirror = universe.runtimeMirror(getClass.getClassLoader)
     val classSymbol = universe.typeOf[T].typeSymbol.asClass
     val classMirror = mirror.reflectClass(classSymbol)
