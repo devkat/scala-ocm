@@ -12,7 +12,7 @@ abstract class AbstractJcrType[T](pt: Int) extends JcrType[T] {
 object JcrType {
   case object binary extends AbstractJcrType[Array[Byte]](javax.jcr.PropertyType.BINARY)
   case object boolean extends AbstractJcrType[Boolean](javax.jcr.PropertyType.BOOLEAN)
-  case object date extends AbstractJcrType[Calendar](javax.jcr.PropertyType.DECIMAL)
+  case object date extends AbstractJcrType[Calendar](javax.jcr.PropertyType.DATE)
   case object decimal extends AbstractJcrType[BigDecimal](javax.jcr.PropertyType.DECIMAL)
   case object double extends AbstractJcrType[Double](javax.jcr.PropertyType.DOUBLE)
   case object long extends AbstractJcrType[Long](javax.jcr.PropertyType.LONG)

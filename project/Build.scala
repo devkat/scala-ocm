@@ -13,8 +13,7 @@ object ScalaOcmBuild extends Build {
       "javax.jcr" % "jcr" % "2.0",
       "org.specs2" %% "specs2" % "2.2" % "test"
       //"junit" % "junit" % "4.11" % "test"
-    ),
-    parallelExecution in Test := false
+    )
   )
   
   lazy val common = Project("scala-ocm-common", file("common")) settings (buildSettings ++ Seq(
@@ -28,7 +27,8 @@ object ScalaOcmBuild extends Build {
       "org.scala-lang" % "scala-compiler" % "2.10.2",
       "org.scala-lang" % "scala-reflect" % "2.10.2"
     ),
-    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise" % "2.0.0-SNAPSHOT" cross CrossVersion.full)
+    addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise" % "2.0.0-SNAPSHOT" cross CrossVersion.full),
+    parallelExecution in Test := false
   ):_*)
 
   lazy val core = Project("scala-ocm-core", file("core")) dependsOn (common, macros) settings (buildSettings ++ Seq(
@@ -40,6 +40,7 @@ object ScalaOcmBuild extends Build {
       System.setProperty("org.apache.jackrabbit.repository.conf", "classpath:repository.xml")
       System.setProperty("org.apache.jackrabbit.repository.home", "target/repository")
     }),
+    parallelExecution in Test := false,
     addCompilerPlugin("org.scala-lang.plugins" % "macro-paradise" % "2.0.0-SNAPSHOT" cross CrossVersion.full)
     ):_*)
 
