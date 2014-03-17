@@ -8,10 +8,24 @@ object MockOcm {
   
   val props = scala.collection.mutable.Map.empty[String, Any]
   
-  def readProperty[T](obj: Any, name: String, t: PropertyType[T]): T =
+  def readSingleProperty[T](obj: Any, name: String): T =
     props(name).asInstanceOf[T]
   
-  def writeProperty[T](obj: Any, name: String, t: PropertyType[T], value: T) {
+  def readMultipleProperty[T](obj: Any, name: String): Iterable[T] =
+    props(name).asInstanceOf[Iterable[T]]
+  
+  def readOptionalProperty[T](obj: Any, name: String): Option[T] =
+    props(name).asInstanceOf[Option[T]]
+  
+  def writeSingleProperty[T](obj: Any, name: String, value: T) {
+    props.put(name, value)
+  }
+  
+  def writeMultipleProperty[T](obj: Any, name: String, value: Iterable[T]) {
+    props.put(name, value)
+  }
+  
+  def writeOptionalProperty[T](obj: Any, name: String, value: Option[T]) {
     props.put(name, value)
   }
 }

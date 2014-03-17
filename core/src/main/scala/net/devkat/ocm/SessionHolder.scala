@@ -6,6 +6,7 @@ import javax.jcr.Session
 import javax.jcr.Repository
 import javax.jcr.SimpleCredentials
 import com.typesafe.scalalogging.slf4j.Logging
+import net.devkat.ocm.OcmException
 
 trait SessionHolder extends Logging {
 

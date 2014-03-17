@@ -10,13 +10,13 @@ import java.util.Calendar
 import scala.tools.reflect.Eval
 import scala.collection.immutable.StringOps
 
-import net.devkat.ocm.{JcrType, PropertyType}
+import net.devkat.ocm.{Cardinality, PropertyType}
 
 class node extends StaticAnnotation {
   def macroTransform(annottees: Any*) = macro OcmMacro.node_impl
 }
 
-class property(val propertyType: PropertyType[_] = null) extends StaticAnnotation
+class property(val propertyType: PropertyType = null) extends StaticAnnotation
 
 /*
  * https://github.com/adamw/scala-macro-aop/blob/master/macros/src/main/scala/com/softwaremill/aop/delegateMacro.scala
@@ -60,32 +60,32 @@ object OcmMacro extends Logging {
       field.mods.annotations.find(_.find(t => (t.tpe != null) && (t.tpe =:= typeOf[property])).isDefined)
 
     object MappableType {
-      import JcrType._
+      //import JcrType._
       import PropertyType._
-      def unapply(t: Tree): Option[Tree] = {
+      def unapply(t: Tree): Option[(PropertyType, Tree)] = {
         val tpe = runtimeType(c)(c.Expr[Type](t))
-        (if (tpe =:= universe.typeOf[Array[Byte]]) Some(reify(simple(binary))) else
-        if (tpe =:= universe.typeOf[Boolean]) Some(reify(simple(boolean))) else
-        if (tpe =:= universe.typeOf[BigDecimal]) Some(reify(simple(decimal))) else
-        if (tpe =:= universe.typeOf[Calendar]) Some(reify(simple(date))) else
-        if (tpe =:= universe.typeOf[Double]) Some(reify(simple(double))) else
-        if (tpe =:= universe.typeOf[Long]) Some(reify(simple(long))) else
-        if (tpe =:= universe.typeOf[String]) Some(reify(simple(string))) else
-        if (tpe =:= universe.typeOf[Option[Array[Byte]]]) Some(reify(optional(binary))) else
-        if (tpe =:= universe.typeOf[Option[BigDecimal]]) Some(reify(optional(decimal))) else
-        if (tpe =:= universe.typeOf[Option[Boolean]]) Some(reify(optional(boolean))) else
-        if (tpe =:= universe.typeOf[Option[Calendar]]) Some(reify(optional(date))) else
-        if (tpe =:= universe.typeOf[Option[Double]]) Some(reify(optional(double))) else
-        if (tpe =:= universe.typeOf[Option[Long]]) Some(reify(optional(long))) else
-        if (tpe =:= universe.typeOf[Option[String]]) Some(reify(optional(string))) else
-        if (tpe <:< universe.typeOf[Iterable[Array[Byte]]]) Some(reify(multi(binary))) else
-        if (tpe <:< universe.typeOf[Iterable[BigDecimal]]) Some(reify(multi(decimal))) else
-        if (tpe <:< universe.typeOf[Iterable[Boolean]]) Some(reify(multi(boolean))) else
-        if (tpe <:< universe.typeOf[Iterable[Calendar]]) Some(reify(multi(date))) else
-        if (tpe <:< universe.typeOf[Iterable[Double]]) Some(reify(multi(double))) else
-        if (tpe <:< universe.typeOf[Iterable[Long]]) Some(reify(multi(long))) else
-        if (tpe <:< universe.typeOf[Iterable[String]]) Some(reify(multi(string))) else
-        None).map(_.tree)
+        (if (tpe =:= universe.typeOf[Array[Byte]]) Some((simple(binary), reify(simple(binary)))) else
+        if (tpe =:= universe.typeOf[Boolean]) Some((simple(boolean), reify(simple(boolean)))) else
+        if (tpe =:= universe.typeOf[BigDecimal]) Some((simple(decimal), reify(simple(decimal)))) else
+        if (tpe =:= universe.typeOf[Calendar]) Some((simple(date), reify(simple(date)))) else
+        if (tpe =:= universe.typeOf[Double]) Some((simple(double), reify(simple(double)))) else
+        if (tpe =:= universe.typeOf[Long]) Some((simple(long), reify(simple(long)))) else
+        if (tpe =:= universe.typeOf[String]) Some((simple(string)), reify(simple(string))) else
+        if (tpe =:= universe.typeOf[Option[Array[Byte]]]) Some((optional(binary), reify(optional(binary)))) else
+        if (tpe =:= universe.typeOf[Option[BigDecimal]]) Some((optional(decimal), reify(optional(decimal)))) else
+        if (tpe =:= universe.typeOf[Option[Boolean]]) Some((optional(boolean), reify(optional(boolean)))) else
+        if (tpe =:= universe.typeOf[Option[Calendar]]) Some((optional(date), reify(optional(date)))) else
+        if (tpe =:= universe.typeOf[Option[Double]]) Some((optional(double), reify(optional(double)))) else
+        if (tpe =:= universe.typeOf[Option[Long]]) Some((optional(long), reify(optional(long)))) else
+        if (tpe =:= universe.typeOf[Option[String]]) Some((optional(string), reify(optional(string)))) else
+        if (tpe <:< universe.typeOf[Iterable[Array[Byte]]]) Some((multi(binary), reify(multi(binary)))) else
+        if (tpe <:< universe.typeOf[Iterable[BigDecimal]]) Some((multi(decimal), reify(multi(decimal)))) else
+        if (tpe <:< universe.typeOf[Iterable[Boolean]]) Some((multi(boolean), reify(multi(boolean)))) else
+        if (tpe <:< universe.typeOf[Iterable[Calendar]]) Some((multi(date), reify(multi(date)))) else
+        if (tpe <:< universe.typeOf[Iterable[Double]]) Some((multi(double), reify(multi(double)))) else
+        if (tpe <:< universe.typeOf[Iterable[Long]]) Some((multi(long), reify(multi(long)))) else
+        if (tpe <:< universe.typeOf[Iterable[String]]) Some((multi(string), reify(multi(string)))) else
+        None).map { case (t, expr) => (t, expr.tree) }
       }
     }
       
@@ -150,7 +150,7 @@ object OcmMacro extends Logging {
     /**
      * Map mappable type to property type.
      */
-    def mapType(t: Tree): Option[Tree] = t match {
+    def mapType(t: Tree): Option[(PropertyType, Tree)] = t match {
       case MappableType(tpe) => Some(tpe)
       case _ => None
     }
@@ -174,22 +174,62 @@ object OcmMacro extends Logging {
               }
             }.headOption
             
-            val propertyType:Option[Tree] = ann.flatMap(_.get("propertyType")) match {
+            val propertyType:Option[(PropertyType, Tree)] = ann.flatMap(_.get("propertyType")) match {
               case None => mapType(typeTree)
-              case t => t
+              /*
+              case None => mapType(typeTree) match {
+                case Some(t) => Some((t, reify(t).tree))
+                case None => None
+              }
+              */
+              // FIXME support propertyType annotation
+              case t => None
             }
             
             propertyType match {
-              case Some(propertyType) => {
-                logger.info(s"Mapping field ${className}.${plainFieldName} to ${propertyType} property '${plainFieldName}'.")
+              case Some((propertyType, propertyTypeTree)) => {
+                import Cardinality._
+                logger.info(s"Mapping field ${className}.${plainFieldName} to ${propertyTypeTree} property '${plainFieldName}'.")
+                val method = propertyType.cardinality match {
+                  case Cardinality.Simple => "Single"
+                  case Cardinality.Multi => "Multiple"
+                  case Cardinality.Optional => "Optional"
+                }
+                /*
+                def toMethod(s:String) = Literal(Constant(s + method + "Property"))
+                val getter = toMethod("read")
+                val setter = toMethod("write")
+                */
+                
+                val baseType = typeTree.children match {
+                  case List(_, t) => Some(t)
+                  case _ => None
+                }
+                
                 List(
                   //q"private var $varName:$varType = _",
-                  q"""def $name = readProperty[$typeTree](this, ${nameLiteral}, ${propertyType})""",
+                  propertyType.cardinality match {
+                    case Simple => q"""def $name = readSingleProperty[$typeTree](this, ${nameLiteral})"""
+                    case Multi => q"""def $name = readMultipleProperty[${baseType.get}](this, ${nameLiteral})"""
+                    case Optional => q"""def $name = readOptionalProperty[${baseType.get}](this, ${nameLiteral})"""
+                  },
+                  //q"""def $name = $getter[$typeTree](this, ${nameLiteral}, ${propertyTypeTree})""",
                   //q"def $setterName(a: $varType) = $varName = a"
-                  q"""def $setterName(a: $typeTree) {
-	                println("Setting variable to %s".format(a))
-	                writeProperty[$typeTree](this, ${nameLiteral}, ${propertyType}, a)
-	              }"""): List[Tree]
+                  propertyType.cardinality match {
+                    case Simple => q"""def $setterName(a: $typeTree) {
+                      println("Setting variable to %s".format(a))
+                      writeSingleProperty[$typeTree](this, ${nameLiteral}, a)
+                    }"""
+                    case Multi => q"""def $setterName(a: $typeTree) {
+                      println("Setting variable to %s".format(a))
+                      writeMultipleProperty[${baseType.get}](this, ${nameLiteral}, a)
+                    }"""
+                    case Optional => q"""def $setterName(a: $typeTree) {
+                      println("Setting variable to %s".format(a))
+                      writeOptionalProperty[${baseType.get}](this, ${nameLiteral}, a)
+                    }"""
+                  }
+                ): List[Tree]
               }
               case None => List(invalid(typeTree))
             }

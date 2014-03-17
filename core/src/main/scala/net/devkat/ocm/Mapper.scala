@@ -9,7 +9,7 @@ import net.devkat.ocm.annotation.JcrProperty
 
 case class FieldMetaData(
   term: TermSymbol,
-  valueType: PropertyType[_])
+  valueType: PropertyType)
 
 trait Mapper extends Logging {
 
@@ -17,15 +17,15 @@ trait Mapper extends Logging {
 
   import Reflection._
 
-  def writeProperty[T](r: AnyRef, name: String, tpe: PropertyType[T], value: T)
+  def writeProperty[T](r: AnyRef, name: String, tpe: PropertyType, value: T)
   
-  def readProperty[T](r: AnyRef, name: String, tpe: PropertyType[T]): T
+  def readProperty[T](r: AnyRef, name: String, tpe: PropertyType): T
   
   def setFieldValue(field: FieldMirror, value: Any): Unit
 
   def getFieldValue[T](field: FieldMirror): T
 
-  def getFieldType(field: TermSymbol): PropertyType[_]
+  def getFieldType(field: TermSymbol): PropertyType
 
   protected def jcrPath(node: Node) = Path.parse(node.getPath)
 
@@ -60,7 +60,7 @@ trait Mapper extends Logging {
       getMappedFields(mirror.symbol) foreach { field =>
         val v = getFieldValue[Any](mirror.reflectField(field.term))
         val name = fieldName(field.term)
-        val t:PropertyType[_] = getFieldType(field.term)
+        val t:PropertyType = getFieldType(field.term)
         //t.set(n, name, v)
 
         /*
@@ -100,7 +100,7 @@ trait Mapper extends Logging {
         t.annotations.find(_.tpe == typeOf[JcrProperty]).isDefined => FieldMetaData(t, getFieldType(t))
     }
 
-  protected def getPropertyValue[T](node: Node, name: String, t: PropertyType[T]): T = {
+  protected def getPropertyValue[T](node: Node, name: String, t: PropertyType): T = {
     //t.get(node, name)
     null.asInstanceOf[T]
 

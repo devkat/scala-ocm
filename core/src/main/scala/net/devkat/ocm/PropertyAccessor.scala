@@ -13,6 +13,7 @@ import javax.jcr.Property
 import scala.util.Success
 import scala.util.Failure
 import scala.reflect.runtime.universe._
+import net.devkat.ocm.OcmException
 
 sealed trait PropertyValue
 
@@ -66,7 +67,8 @@ object PropertyAccessor {
     }
   }
 
-  def setProperty[T](node: Node, name: String, t: PropertyType[T], v: T)(implicit jcrSession: Session): Unit = {
+  def setProperty[T](node: Node, name: String, t: PropertyType, v: T)(implicit jcrSession: Session): Unit = {
+    /*
     def clear = if (node.hasProperty(name)) node.getProperty(name).remove()
     val create = createValue(t.jcrPropertyType) _
     t match {
@@ -81,6 +83,7 @@ object PropertyAccessor {
         else node.setProperty(name, i.map(create).toArray)
       }
     }
+    */
   }
 
   def flatten[T](xs: Seq[Try[T]]): Try[Seq[T]] = {
